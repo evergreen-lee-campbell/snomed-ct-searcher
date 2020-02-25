@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>SNOMED CT Searcher</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script src="index.umd.js"></script>
+    </head>
+    <body>
+        <h1>SNOMED CT Deep Search</h1>
+        <div>
+            <p>Enter a SNOMED CT concept ID, description/term, or description ID in the box below, and download a CSV of the search term's concept ID, "term", and any associated description IDs, and all of the concept's children to infinite depth.</p>
+        </div>
+        <div><input id="search" type="search"></div>
+        <div><button id="go" onclick="snomedSearch._getChildCodes()">Go!</button></div>
+        <div><a id="download" style="display: none;">Download it!</a></div>
+    </body>
+</html>

@@ -4,7 +4,7 @@
 	(global = global || self, factory(global.snomedSearch = {}, global.fetch));
 }(this, (function (exports, fetch) { 'use strict';
 
-	fetch = fetch && fetch.hasOwnProperty('default') ? fetch['default'] : fetch;
+	fetch = fetch && Object.prototype.hasOwnProperty.call(fetch, 'default') ? fetch['default'] : fetch;
 
 	var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -10589,7 +10589,7 @@
 	        step((generator = generator.apply(thisArg, _arguments || [])).next());
 	    });
 	};
-	const apiRoot = "https://termbrowser.nhs.uk/sct-browser-api/snomed/uk-edition/v20191001";
+	const apiRoot = "https://termbrowser.nhs.uk/sct-browser-api/snomed/uk-edition/v20200415";
 	const sessionStorageName = "codes";
 	function getInitialConcept(code) {
 	    return __awaiter(this, void 0, void 0, function* () {
@@ -10597,7 +10597,7 @@
 	        let requestPath = "";
 	        let isDescription = false;
 	        if (/.*[a-zA-Z].*/.test(code)) {
-	            requestPath += `/descriptions?query=${encodeURIComponent(code)}&limit=1&searchMode=partialMatching&lang=english&returnLimit=1&normalize=true`;
+	            requestPath += `/descriptions?query=${encodeURIComponent(code)}&limit=10&searchMode=partialMatching&lang=english&returnLimit=10&normalize=true`;
 	            isDescription = true;
 	        }
 	        else if (/^[0-9]*$/.test(code)) {
@@ -10635,13 +10635,19 @@
 	                return ex;
 	            }
 	        }
+	        console.log('Initial concept response:');
+	        console.log(initialResponse);
 	        if (!initialResponse) {
 	            console.log('Search returned zero results.');
 	            return;
 	        }
-	        if (isDescription) {
+	        if (isDescription && initialResponse.matches) {
 	            try {
-	                initialResponse = yield fetch(apiRoot + "/concepts/" + initialResponse.matches[0].conceptId);
+	                let conceptId = initialResponse.matches.find((m) => m.definitionStatus === "Fully defined").conceptId;
+	                if (!conceptId) {
+	                    conceptId = initialResponse.matches.find((m) => true).conceptId;
+	                }
+	                initialResponse = yield fetch(apiRoot + "/concepts/" + conceptId);
 	                initialResponse = yield initialResponse.json();
 	            }
 	            catch (ex) {
@@ -10676,7 +10682,7 @@
 	                    searchTerm: simpleChildren[i].conceptId,
 	                    descriptions: complexChild.descriptions.map((d) => { return { term: d.term, descriptionId: d.descriptionId }; })
 	                });
-	                if (complexChild.statedDescendants > 0 && (options === undefined ? true : currentDepth < (options.depthLimit || Number.POSITIVE_INFINITY))) {
+	                if (options === undefined ? true : currentDepth < (options.depthLimit || Number.POSITIVE_INFINITY)) {
 	                    yield appendAllChildren(childCodes, complexChild, currentDepth, options);
 	                }
 	            }
@@ -10702,6 +10708,8 @@
 	            console.error(ex);
 	            return ex;
 	        }
+	        if (!topLevelConcept)
+	            return;
 	        let childCodes = [];
 	        childCodes.push({
 	            conceptId: topLevelConcept.conceptId,
@@ -10709,18 +10717,16 @@
 	            searchTerm: code,
 	            descriptions: topLevelConcept.descriptions.map((d) => { return { term: d.term, descriptionId: d.descriptionId }; })
 	        });
-	        if (topLevelConcept.statedDescendants > 0) {
-	            yield appendAllChildren(childCodes, topLevelConcept, 0, options);
-	        }
+	        yield appendAllChildren(childCodes, topLevelConcept, 0, options);
 	        return childCodes;
 	    });
 	}
 	function toCSVOctetStream(childCodes) {
-	    let streamChars = encodeURIComponent("\"conceptId\",\"term\",\"descriptionId\"\n");
+	    let streamChars = encodeURIComponent("conceptId\tterm\tdescriptionId\n");
 	    childCodes.forEach(c => {
 	        c.descriptions.forEach(d => {
 	            console.log(d.term);
-	            streamChars += encodeURIComponent(`"${c.conceptId}", "${d.term}", "${d.descriptionId}"\n`);
+	            streamChars += encodeURIComponent(`${c.conceptId}\t${d.term}\t${d.descriptionId}\n`);
 	        });
 	    });
 	    return streamChars;
@@ -10731,18 +10737,21 @@
 	        downloadA.hide();
 	        let goButton = jquery('#go');
 	        goButton.attr('disabled');
+	        let overlay = jquery('#overlay');
+	        overlay.show();
 	        let searchValue = jquery('#search').val();
 	        let result = yield getChildCodes(searchValue);
 	        sessionStorage.setItem(sessionStorageName, JSON.stringify(result));
-	        goButton.removeAttr('disabled');
-	        _download();
+	        _download(overlay, goButton);
 	    });
 	}
-	function _download() {
+	function _download(overlay, goButton) {
 	    let downloadA = jquery('#download');
 	    let childCodes = JSON.parse(sessionStorage.getItem(sessionStorageName) || "");
 	    downloadA.attr('href', `data:application/octet-stream,${toCSVOctetStream(childCodes)}`);
-	    downloadA.attr('download', (jquery('#search').val() || childCodes[0].defaultTerm || Date.now()) + ".csv");
+	    downloadA.attr('download', (jquery('#search').val() || childCodes[0].defaultTerm || Date.now()) + ".tsv");
+	    overlay.hide();
+	    goButton.removeAttr('disabled');
 	    downloadA.show();
 	}
 

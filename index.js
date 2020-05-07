@@ -9,6 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import $ from 'jquery';
 import fetch from 'node-fetch';
+import Levenshtein from 'levenshtein';
 const apiRoot = "https://termbrowser.nhs.uk/sct-browser-api/snomed/uk-edition/v20200415";
 const sessionStorageName = "codes";
 class SearchOptions {
@@ -63,12 +64,13 @@ function getInitialConcept(code) {
             console.log('Search returned zero results.');
             return;
         }
-        if (isDescription && initialResponse.matches) {
+        if (isDescription && initialResponse.matches && initialResponse.matches.length > 0) {
             try {
-                let conceptId = initialResponse.matches.find((m) => m.definitionStatus === "Fully defined").conceptId;
-                if (!conceptId) {
-                    conceptId = initialResponse.matches.find((m) => true).conceptId;
-                }
+                let conceptId = initialResponse.matches.sort((a, b) => {
+                    let levA = new Levenshtein(a.term, code);
+                    let levB = new Levenshtein(b.term, code);
+                    return levA.distance < levB.distance;
+                })[0].conceptId;
                 initialResponse = yield fetch(apiRoot + "/concepts/" + conceptId);
                 initialResponse = yield initialResponse.json();
             }
@@ -157,6 +159,7 @@ export function _getChildCodes() {
     return __awaiter(this, void 0, void 0, function* () {
         let downloadA = $('#download');
         downloadA.hide();
+        $('.error').hide();
         let goButton = $('#go');
         goButton.attr('disabled');
         let overlay = $('#overlay');
@@ -169,11 +172,19 @@ export function _getChildCodes() {
 }
 export function _download(overlay, goButton) {
     let downloadA = $('#download');
-    let childCodes = JSON.parse(sessionStorage.getItem(sessionStorageName) || "");
-    downloadA.attr('href', `data:application/octet-stream,${toCSVOctetStream(childCodes)}`);
-    downloadA.attr('download', ($('#search').val() || childCodes[0].defaultTerm || Date.now()) + ".tsv");
+    let childCodes;
+    try {
+        childCodes = JSON.parse(sessionStorage.getItem(sessionStorageName) || "");
+        downloadA.attr('href', `data:application/octet-stream,${toCSVOctetStream(childCodes)}`);
+        downloadA.attr('download', ($('#search').val() || childCodes[0].defaultTerm || Date.now()) + ".tsv");
+        downloadA.show();
+    }
+    catch (ex) {
+        $('.error').show();
+        $('.error #message').text('Could not retrieve child SNOMED codes.');
+        $('.error #detailedMessage').text(ex.message);
+    }
     overlay.hide();
     goButton.removeAttr('disabled');
-    downloadA.show();
 }
 //# sourceMappingURL=index.js.map

@@ -1,3 +1,19 @@
+body {
+   font-family: 'Courier New', Courier, monospace;
+}
+
+button {
+   margin-top: 8px;
+   margin-bottom: 8px;
+   color: white;
+   background-color: green;
+   border-radius: 8px;
+   padding: 8px;
+   font-weight: bold;
+   font-family: 'Courier New', Courier, monospace;
+   font-size: medium;
+}
+
 #overlay {
     position: fixed;
     width: 100%;
@@ -40,3 +56,13 @@
     from {transform: rotate(0deg);}
     to {transform: rotate(359deg);}
  }
+
+ .error {
+   background-color: crimson;
+   color: white;
+   border-radius: 8px;
+   padding: 24px;
+   margin-top: 24px;
+   text-align: center;
+   font-weight: bold;
+}

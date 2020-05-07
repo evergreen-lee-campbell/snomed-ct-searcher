@@ -10580,6 +10580,111 @@
 	} );
 	});
 
+	var levenshtein = createCommonjsModule(function (module) {
+	(function(root, factory){
+	  if ( module && module.exports) {
+	    module.exports = factory(root);
+	  } else {
+	    root.Levenshtein = factory(root);
+	  }
+	}(commonjsGlobal, function(root){
+
+	  function forEach( array, fn ) { var i, length;
+	    i = -1;
+	    length = array.length;
+	    while ( ++i < length )
+	      fn( array[ i ], i, array );
+	  }
+
+	  function map( array, fn ) { var result;
+	    result = Array( array.length );
+	    forEach( array, function ( val, i, array ) {
+	      result[i] = fn( val, i, array );
+	    });
+	    return result
+	  }
+
+	  function reduce( array, fn, accumulator ) {
+	    forEach( array, function( val, i, array ) {
+	      accumulator = fn( val, i, array );
+	    });
+	    return accumulator
+	  }
+
+	  // Levenshtein distance
+	  function Levenshtein( str_m, str_n ) { var previous, current, matrix;
+	    // Constructor
+	    matrix = this._matrix = [];
+
+	    // Sanity checks
+	    if ( str_m == str_n )
+	      return this.distance = 0
+	    else if ( str_m == '' )
+	      return this.distance = str_n.length
+	    else if ( str_n == '' )
+	      return this.distance = str_m.length
+	    else {
+	      // Danger Will Robinson
+	      previous = [ 0 ];
+	      forEach( str_m, function( v, i ) { i++, previous[ i ] = i; } );
+
+	      matrix[0] = previous;
+	      forEach( str_n, function( n_val, n_idx ) {
+	        current = [ ++n_idx ];
+	        forEach( str_m, function( m_val, m_idx ) {
+	          m_idx++;
+	          if ( str_m.charAt( m_idx - 1 ) == str_n.charAt( n_idx - 1 ) )
+	            current[ m_idx ] = previous[ m_idx - 1 ];
+	          else
+	            current[ m_idx ] = Math.min
+	              ( previous[ m_idx ]     + 1   // Deletion
+	              , current[  m_idx - 1 ] + 1   // Insertion
+	              , previous[ m_idx - 1 ] + 1   // Subtraction
+	              );
+	        });
+	        previous = current;
+	        matrix[ matrix.length ] = previous;
+	      });
+
+	      return this.distance = current[ current.length - 1 ]
+	    }
+	  }
+
+	  Levenshtein.prototype.toString = Levenshtein.prototype.inspect = function inspect ( no_print ) { var matrix, max, buff, sep, rows;
+	    matrix = this.getMatrix();
+	    max = reduce( matrix,function( m, o ) {
+	      return Math.max( m, reduce( o, Math.max, 0 ) )
+	    }, 0 );
+	    buff = Array( ( max + '' ).length ).join( ' ' );
+
+	    sep = [];
+	    while ( sep.length < (matrix[0] && matrix[0].length || 0) )
+	      sep[ sep.length ] = Array( buff.length + 1 ).join( '-' );
+	    sep = sep.join( '-+' ) + '-';
+
+	    rows = map( matrix, function( row ) { var cells;
+	      cells = map( row, function( cell ) {
+	        return ( buff + cell ).slice( - buff.length )
+	      });
+	      return cells.join( ' |' ) + ' '
+	    });
+
+	    return rows.join( "\n" + sep + "\n" )
+	  };
+
+	  Levenshtein.prototype.getMatrix = function () {
+	    return this._matrix.slice()
+	  };
+
+	  Levenshtein.prototype.valueOf = function() {
+	    return this.distance
+	  };
+
+	  return Levenshtein
+
+	}));
+	});
+
 	var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
 	    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
 	    return new (P || (P = Promise))(function (resolve, reject) {
@@ -10641,12 +10746,13 @@
 	            console.log('Search returned zero results.');
 	            return;
 	        }
-	        if (isDescription && initialResponse.matches) {
+	        if (isDescription && initialResponse.matches && initialResponse.matches.length > 0) {
 	            try {
-	                let conceptId = initialResponse.matches.find((m) => m.definitionStatus === "Fully defined").conceptId;
-	                if (!conceptId) {
-	                    conceptId = initialResponse.matches.find((m) => true).conceptId;
-	                }
+	                let conceptId = initialResponse.matches.sort((a, b) => {
+	                    let levA = new levenshtein(a.term, code);
+	                    let levB = new levenshtein(b.term, code);
+	                    return levA.distance < levB.distance;
+	                })[0].conceptId;
 	                initialResponse = yield fetch(apiRoot + "/concepts/" + conceptId);
 	                initialResponse = yield initialResponse.json();
 	            }
@@ -10735,6 +10841,7 @@
 	    return __awaiter(this, void 0, void 0, function* () {
 	        let downloadA = jquery('#download');
 	        downloadA.hide();
+	        jquery('.error').hide();
 	        let goButton = jquery('#go');
 	        goButton.attr('disabled');
 	        let overlay = jquery('#overlay');
@@ -10747,12 +10854,20 @@
 	}
 	function _download(overlay, goButton) {
 	    let downloadA = jquery('#download');
-	    let childCodes = JSON.parse(sessionStorage.getItem(sessionStorageName) || "");
-	    downloadA.attr('href', `data:application/octet-stream,${toCSVOctetStream(childCodes)}`);
-	    downloadA.attr('download', (jquery('#search').val() || childCodes[0].defaultTerm || Date.now()) + ".tsv");
+	    let childCodes;
+	    try {
+	        childCodes = JSON.parse(sessionStorage.getItem(sessionStorageName) || "");
+	        downloadA.attr('href', `data:application/octet-stream,${toCSVOctetStream(childCodes)}`);
+	        downloadA.attr('download', (jquery('#search').val() || childCodes[0].defaultTerm || Date.now()) + ".tsv");
+	        downloadA.show();
+	    }
+	    catch (ex) {
+	        jquery('.error').show();
+	        jquery('.error #message').text('Could not retrieve child SNOMED codes.');
+	        jquery('.error #detailedMessage').text(ex.message);
+	    }
 	    overlay.hide();
 	    goButton.removeAttr('disabled');
-	    downloadA.show();
 	}
 
 	exports._download = _download;

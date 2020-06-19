@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>SNOMED CT Searcher</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="styles.css"/>
+        <script src="index.umd.js"></script>
+        <script type="text/javascript">
+            document.addEventListener("DOMContentLoaded", function(event) { 
+                var input = document.getElementById("search");
+                input.addEventListener("keyup", function(event) {
+                    if (event.keyCode === 13) {
+                        event.preventDefault();
+                        document.getElementById("go").click();
+                    }
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <div id="overlay" style="display: none;"><div class="spinner"></div></div>
+        <h1>SNOMED CT Deep Search</h1>
+        <div>
+            <p>Enter a SNOMED CT concept ID, description/term, or description ID in the box below, and download a CSV of the search term's concept ID, "term", and any associated description IDs, and all of the concept's children to infinite depth.</p>
+        </div>
+        <div><input id="search" type="search"></div>
+        <div><button id="go" onclick="snomedSearch._getChildCodes()">Go!</button></div>
+        <div><a id="download" style="display: none;">Download it!</a></div>
+        <div class="error" style="display: none;">
+            <p>Something went wrong!</p>
+            <p id="message"></p>
+            <p id="detailedMessage"></p>
+        </div>
+    </body>
+</html>

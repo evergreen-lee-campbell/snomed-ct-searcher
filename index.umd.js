@@ -10694,7 +10694,7 @@
 	        step((generator = generator.apply(thisArg, _arguments || [])).next());
 	    });
 	};
-	const apiRoot = "https://termbrowser.nhs.uk/sct-browser-api/snomed/uk-edition/v20200415";
+	const apiRoot = 'https://termbrowser.nhs.uk/sct-browser-api/snomed/uk-edition/v20200610';
 	const sessionStorageName = "codes";
 	function getInitialConcept(code) {
 	    return __awaiter(this, void 0, void 0, function* () {

@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import $ from 'jquery';
 import fetch from 'node-fetch';
 import Levenshtein from 'levenshtein';
-const apiRoot = "https://termbrowser.nhs.uk/sct-browser-api/snomed/uk-edition/v20200415";
+const apiRoot = 'https://termbrowser.nhs.uk/sct-browser-api/snomed/uk-edition/v20200610';
 const sessionStorageName = "codes";
 class SearchOptions {
 }
